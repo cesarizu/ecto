@@ -853,12 +853,20 @@ defmodule Ecto.Query.Planner do
         end
     end
   end
-  defp source_type!(kind, query, expr, schema, field) when is_atom(schema) do
-    if type = schema.__schema__(:type, field) do
+  defp source_type!(kind, query, expr, schema, path) when is_atom(schema) do
+    if type = type_for_path(schema, path) do
       type
     else
-      error! query, expr, "field `#{inspect schema}.#{field}` in `#{kind}` " <>
+      error! query, expr, "field `#{inspect schema}.#{path}` in `#{kind}` " <>
                           "does not exist in the schema"
+    end
+  end
+
+  defp type_for_path(schema, path) do
+    case (String.split(to_string(path), ".", parts: 2) |> Enum.map(&String.to_atom/1)) do
+      [embed, field] -> type_for_path(schema.__schema__(:embed, embed).related, field)
+      [field] -> schema.__schema__(:type, field)
+      _ -> nil
     end
   end
 
